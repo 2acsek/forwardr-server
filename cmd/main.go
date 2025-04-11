@@ -28,25 +28,36 @@ func main() {
 	e.GET("/download", func(c echo.Context) error {
 		urlToDownload := c.QueryParam("url")
 		fileNameOverride := c.QueryParam("filename")
-		folderToDownload := c.QueryParam("folder")
-		if folderToDownload == "" {
-			folderToDownload = TorrentFolder
-		} else if folderToDownload == "private" {
-			folderToDownload = PrivateFolder
-		} else {
-			return c.String(http.StatusBadRequest, "Invalid folder")
-		}
+
 		decodedURL, err := url.QueryUnescape(urlToDownload)
 		if err != nil {
 			return c.String(http.StatusBadRequest, "Invalid URL")
 		}
-		filename, err := downloadFile(folderToDownload, decodedURL, fileNameOverride)
-		if err != nil && filename != "" {
-			return c.String(http.StatusInternalServerError, "Failed to download file: "+err.Error())
-		}
+
+		filename, err := downloadFile(TorrentFolder, decodedURL, fileNameOverride)
+
 		if err != nil {
 			return c.String(http.StatusInternalServerError, "Failed to download file: "+err.Error())
 		}
+
+		return c.String(http.StatusOK, "File downloaded successfully: "+filename)
+	})
+
+	e.GET("/download/private", func(c echo.Context) error {
+		urlToDownload := c.QueryParam("url")
+		fileNameOverride := c.QueryParam("filename")
+
+		decodedURL, err := url.QueryUnescape(urlToDownload)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Invalid URL")
+		}
+
+		filename, err := downloadFile(PrivateFolder, decodedURL, fileNameOverride)
+
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Failed to download file: "+err.Error())
+		}
+
 		return c.String(http.StatusOK, "File downloaded successfully: "+filename)
 	})
 
