@@ -1,0 +1,13 @@
+services:
+  forwardr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"       # Map host port 8080 to container port 8080
+    volumes:
+      - /media/hdd/torrent:/app/torrent  # Mount host directory for torrents
+      - /media/hdd/private:/app/private  # Mount host directory for private files
+    environment:
+      - ENV=production     # Optional: define any env vars your app needs
+    restart: always        # Automatically restart the container if it crashes
