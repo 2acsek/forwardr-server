@@ -10,4 +10,4 @@ services:
       - /media/hdd/private:/app/private  # Mount host directory for private files
     environment:
       - ENV=production     # Optional: define any env vars your app needs
-    restart: always        # Automatically restart the container if it crashes
+    restart: unless-stopped        # Automatically restart the container if it crashes
