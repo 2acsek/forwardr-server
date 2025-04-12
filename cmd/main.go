@@ -26,8 +26,8 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	const PrivateFolder = "./app/private"
-	const TorrentFolder = "./app/torrent"
+	const PrivateFolder = "/app/private"
+	const TorrentFolder = "/app/torrent"
 
 	e.GET("/download", func(c echo.Context) error {
 		urlEncoded := c.QueryParam("url")
