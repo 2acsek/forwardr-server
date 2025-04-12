@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"net/url"
@@ -119,7 +118,6 @@ func main() {
 }
 
 func downloadFile(folder string, fileURL *url.URL, overrideFilename string) (string, error) {
-	log.Println(fileURL)
 	request, err := http.NewRequest("GET", fileURL.String(), nil)
 	if err != nil {
 		return "", err
@@ -135,15 +133,8 @@ func downloadFile(folder string, fileURL *url.URL, overrideFilename string) (str
 				return err
 			}
 
-			log.Println("Redirecting to:", req.URL.String())
 			return nil
 		},
-	}
-
-	for key, values := range request.Header {
-		for _, value := range values {
-			log.Printf("  %s: %s\n", key, value)
-		}
 	}
 
 	resp, err := client.Do(request)
@@ -184,7 +175,6 @@ func downloadFile(folder string, fileURL *url.URL, overrideFilename string) (str
 	var totalWritten int64
 	for {
 		n, err := resp.Body.Read(buffer)
-		fmt.Printf("Read %d bytes\n", n)
 		if n > 0 {
 			written, writeErr := out.Write(buffer[:n])
 			if writeErr != nil {
