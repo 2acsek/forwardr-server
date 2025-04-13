@@ -34,7 +34,7 @@ func (api *API) Downloads(w http.ResponseWriter, r *http.Request) {
 func (api *API) ClearDownloads(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s - %s\n", r.Method, r.URL.String())
 	api.Store.Clear()
-	w.Write([]byte("ok"))
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
@@ -55,11 +55,6 @@ func (api *API) RetryDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte("ok"))
-}
-
-func writeJSON(w http.ResponseWriter, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
 }
 
 func downloadFile(api *API, w http.ResponseWriter, r *http.Request, path string) {
@@ -89,4 +84,9 @@ func downloadFile(api *API, w http.ResponseWriter, r *http.Request, path string)
 	id := service.StartDownload(api.Store, url, fileName, path)
 
 	writeJSON(w, map[string]string{"id": id})
+}
+
+func writeJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
 }

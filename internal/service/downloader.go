@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,7 +61,7 @@ func RetryDownload(store *model.Store, id string) error {
 	return nil
 }
 
-func downloadWorker(dl *model.Download) {
+func downloadWorkerDeprecated(dl *model.Download) {
 	dl.Status = model.StatusRunning
 
 	request, err := http.NewRequest("GET", dl.URL, nil)
@@ -161,6 +162,101 @@ func downloadWorker(dl *model.Download) {
 			dl.Status = model.StatusFailed
 			dl.Error = err.Error()
 			return
+		}
+	}
+
+	dl.Progress = 100
+	dl.Status = model.StatusCompleted
+}
+
+func downloadWorker(dl *model.Download) {
+	dl.Status = model.StatusRunning
+	defer func() {
+		if dl.Status != model.StatusCompleted {
+			dl.Status = model.StatusFailed
+		}
+	}()
+
+	filePath := filepath.Join("downloads", dl.FileName)
+	_ = os.MkdirAll("downloads", 0755)
+
+	var downloaded int64 = 0
+	var out *os.File
+	var err error
+
+	// Check for existing file
+	if fi, statErr := os.Stat(filePath); statErr == nil {
+		out, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
+		downloaded = fi.Size()
+	} else {
+		out, err = os.Create(filePath)
+	}
+	if err != nil {
+		dl.Error = err.Error()
+		return
+	}
+	defer out.Close()
+
+	req, _ := http.NewRequest("GET", dl.URL, nil)
+	if downloaded > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", downloaded))
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		dl.Error = err.Error()
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		dl.Error = fmt.Sprintf("Unexpected status: %d", resp.StatusCode)
+		return
+	}
+
+	cl := resp.Header.Get("Content-Length")
+	if cl != "" {
+		if sz, err := strconv.ParseInt(cl, 10, 64); err == nil {
+			dl.TotalBytes = downloaded + sz
+		}
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	progressChan := make(chan struct{}, 1)
+
+	go func() {
+		for range ticker.C {
+			select {
+			case progressChan <- struct{}{}:
+			default:
+			}
+		}
+	}()
+
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			if _, err := out.Write(buf[:n]); err != nil {
+				dl.Error = err.Error()
+				return
+			}
+			downloaded += int64(n)
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			dl.Error = err.Error()
+			return
+		}
+		select {
+		case <-progressChan:
+			if dl.TotalBytes > 0 {
+				dl.Progress = float64(downloaded) / float64(dl.TotalBytes) * 100
+			}
+		default:
 		}
 	}
 
