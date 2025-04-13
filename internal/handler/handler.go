@@ -20,16 +20,25 @@ func NewHandler(store *model.Store) *API {
 }
 
 func (api *API) Health(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
 func (api *API) Downloads(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
 	all := api.Store.GetAll()
 	writeJSON(w, all)
 }
 
+func (api *API) ClearDownloads(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
+	api.Store.Clear()
+	w.Write([]byte("ok"))
+}
+
 func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
 	encodedUrl := r.URL.Query().Get("url")
 	fileName := r.URL.Query().Get("fileName")
 	path := "/app/torrent"
@@ -59,6 +68,7 @@ func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) DownloadPrivate(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
 	encodedUrl := r.URL.Query().Get("url")
 	fileName := r.URL.Query().Get("fileName")
 	path := "/app/private"

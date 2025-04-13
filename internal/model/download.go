@@ -50,6 +50,12 @@ func (s *Store) GetAll() []*Download {
 	return list
 }
 
+func (s *Store) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	clear(s.downloads)
+}
+
 func (s *Store) Get(id string) (*Download, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

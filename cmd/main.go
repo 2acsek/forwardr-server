@@ -15,6 +15,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", api.Health)
 	mux.HandleFunc("/downloads", api.Downloads)
+	mux.HandleFunc("/downloads/clear", api.ClearDownloads)
 	mux.HandleFunc("/download", api.DownloadTorrent)
 	mux.HandleFunc("/download/private", api.DownloadPrivate)
 

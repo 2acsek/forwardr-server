@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,7 +86,12 @@ func downloadWorker(dl *model.Download) {
 			dl.Status = model.StatusFailed
 			dl.Error = "filename could not be detected"
 		}
-		dl.FileName = fileNameFromHeader
+		unescapedFileName, err := url.QueryUnescape(fileNameFromHeader)
+		if err != nil {
+			dl.Status = model.StatusFailed
+			dl.Error = "filename could not be detected"
+		}
+		dl.FileName = unescapedFileName
 	}
 
 	dl.TotalBytes = resp.ContentLength
