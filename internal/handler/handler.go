@@ -38,66 +38,55 @@ func (api *API) ClearDownloads(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s - %s\n", r.Method, r.URL.String())
-	encodedUrl := r.URL.Query().Get("url")
-	fileName := r.URL.Query().Get("fileName")
 	path := "/app/torrent"
-
-	if encodedUrl == "" {
-		http.Error(w, "Missing url", http.StatusBadRequest)
-		return
-	}
-
-	urlB64, err := url.QueryUnescape(encodedUrl)
-	if err != nil {
-		http.Error(w, "Invalid URL encoding", http.StatusBadRequest)
-		return
-	}
-	log.Printf("B64 URL: %s", urlB64)
-	urlBytes, err := base64.StdEncoding.DecodeString(urlB64)
-	if err != nil {
-		http.Error(w, "Invalid base64 URL", http.StatusBadRequest)
-		return
-	}
-	url := string(urlBytes)
-	log.Printf("File download initiated for: %s", url)
-
-	id := service.StartDownload(api.Store, url, fileName, path)
-
-	writeJSON(w, map[string]string{"id": id})
+	downloadFile(api, w, r, path)
 }
 
 func (api *API) DownloadPrivate(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s - %s\n", r.Method, r.URL.String())
-	encodedUrl := r.URL.Query().Get("url")
-	fileName := r.URL.Query().Get("fileName")
 	path := "/app/private"
+	downloadFile(api, w, r, path)
+}
 
-	if encodedUrl == "" {
-		http.Error(w, "Missing url", http.StatusBadRequest)
-		return
-	}
-
-	urlB64, err := url.QueryUnescape(encodedUrl)
+func (api *API) RetryDownload(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	err := service.RetryDownload(api.Store, id)
 	if err != nil {
-		http.Error(w, "Invalid URL encoding", http.StatusBadRequest)
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	log.Printf("B64 URL: %s", urlB64)
-	urlBytes, err := base64.StdEncoding.DecodeString(urlB64)
-	if err != nil {
-		http.Error(w, "Invalid base64 URL", http.StatusBadRequest)
-		return
-	}
-	url := string(urlBytes)
-	log.Printf("File download initiated for: %s", url)
-
-	id := service.StartDownload(api.Store, url, fileName, path)
-
-	writeJSON(w, map[string]string{"id": id})
+	w.Write([]byte("ok"))
 }
 
 func writeJSON(w http.ResponseWriter, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
+}
+
+func downloadFile(api *API, w http.ResponseWriter, r *http.Request, path string) {
+	log.Printf("%s - %s\n", r.Method, r.URL.String())
+	encodedUrl := r.URL.Query().Get("url")
+	fileName := r.URL.Query().Get("fileName")
+
+	if encodedUrl == "" {
+		http.Error(w, "Missing url", http.StatusBadRequest)
+		return
+	}
+
+	urlB64, err := url.QueryUnescape(encodedUrl)
+	if err != nil {
+		http.Error(w, "Invalid URL encoding", http.StatusBadRequest)
+		return
+	}
+	log.Printf("B64 URL: %s", urlB64)
+	urlBytes, err := base64.StdEncoding.DecodeString(urlB64)
+	if err != nil {
+		http.Error(w, "Invalid base64 URL", http.StatusBadRequest)
+		return
+	}
+	url := string(urlBytes)
+	log.Printf("File download initiated for: %s", url)
+
+	id := service.StartDownload(api.Store, url, fileName, path)
+
+	writeJSON(w, map[string]string{"id": id})
 }

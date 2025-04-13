@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -45,6 +46,18 @@ func StartDownload(store *model.Store, url, fileName string, path string) string
 	go downloadWorker(dl)
 
 	return id
+}
+
+func RetryDownload(store *model.Store, id string) error {
+	dl, exists := store.Get(id)
+	if exists {
+		dl.Error = ""
+		go downloadWorker(dl)
+	} else {
+		return errors.New("invalid id")
+	}
+
+	return nil
 }
 
 func downloadWorker(dl *model.Download) {
