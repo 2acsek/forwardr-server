@@ -32,7 +32,7 @@ func (api *API) Downloads(w http.ResponseWriter, r *http.Request) {
 func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
 	encodedUrl := r.URL.Query().Get("url")
 	fileName := r.URL.Query().Get("fileName")
-	path := "./app/torrent"
+	path := "/app/torrent"
 
 	if encodedUrl == "" {
 		http.Error(w, "Missing url", http.StatusBadRequest)
@@ -61,7 +61,7 @@ func (api *API) DownloadTorrent(w http.ResponseWriter, r *http.Request) {
 func (api *API) DownloadPrivate(w http.ResponseWriter, r *http.Request) {
 	encodedUrl := r.URL.Query().Get("url")
 	fileName := r.URL.Query().Get("fileName")
-	path := "./app/private"
+	path := "/app/private"
 
 	if encodedUrl == "" {
 		http.Error(w, "Missing url", http.StatusBadRequest)
