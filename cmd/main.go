@@ -18,6 +18,7 @@ func main() {
 	mux.HandleFunc("/downloads/clear", api.ClearDownloads)
 	mux.HandleFunc("/download", api.DownloadTorrent)
 	mux.HandleFunc("/download/private", api.DownloadPrivate)
+	mux.HandleFunc("/download/retry", api.RetryDownload)
 
 	server := &http.Server{
 		Addr:    ":8080",
