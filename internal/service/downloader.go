@@ -61,8 +61,13 @@ func RetryDownload(store *model.Store, id string) error {
 	return nil
 }
 
-func downloadWorkerDeprecated(dl *model.Download) {
+func downloadWorker(dl *model.Download) {
 	dl.Status = model.StatusRunning
+	defer func() {
+		if dl.Status != model.StatusCompleted {
+			dl.Status = model.StatusFailed
+		}
+	}()
 
 	request, err := http.NewRequest("GET", dl.URL, nil)
 	if err != nil {
@@ -87,13 +92,7 @@ func downloadWorkerDeprecated(dl *model.Download) {
 		dl.Error = err.Error()
 		return
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		dl.Status = model.StatusFailed
-		dl.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		return
-	}
 	if dl.FileName == "" {
 		fileNameFromHeader, err := getFilenameFromHeader(resp)
 		if err != nil || fileNameFromHeader == "" {
@@ -108,86 +107,26 @@ func downloadWorkerDeprecated(dl *model.Download) {
 		dl.FileName = unescapedFileName
 	}
 
-	dl.TotalBytes = resp.ContentLength
-
-	filePath := filepath.Join(dl.Path, dl.FileName)
-	out, err := os.Create(filePath)
-	if err != nil {
-		dl.Status = model.StatusFailed
-		dl.Error = err.Error()
-		return
-	}
-	defer out.Close()
-
-	buffer := make([]byte, 32*1024)
-	var downloaded int64
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	progressChan := make(chan struct{}, 1)
-	go func() {
-		for range ticker.C {
-			select {
-			case progressChan <- struct{}{}:
-			default:
-			}
-		}
-	}()
-
-	for {
-		n, err := resp.Body.Read(buffer)
-		if n > 0 {
-			if _, writeErr := out.Write(buffer[:n]); writeErr != nil {
-				dl.Status = model.StatusFailed
-				dl.Error = writeErr.Error()
-				return
-			}
-			downloaded += int64(n)
-			dl.DoneBytes = downloaded
-		}
-		select {
-		case <-progressChan:
-			if dl.TotalBytes >= 0 {
-				dl.Progress = float64(downloaded) / float64(dl.TotalBytes) * 100
-			} else {
-				dl.Progress = -1
-			}
-		default:
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			dl.Status = model.StatusFailed
-			dl.Error = err.Error()
-			return
-		}
-	}
-
-	dl.Progress = 100
-	dl.Status = model.StatusCompleted
-}
-
-func downloadWorker(dl *model.Download) {
-	dl.Status = model.StatusRunning
-	defer func() {
-		if dl.Status != model.StatusCompleted {
-			dl.Status = model.StatusFailed
-		}
-	}()
-
 	filePath := filepath.Join(dl.Path, dl.FileName)
 	_ = os.MkdirAll(dl.Path, 0755)
 
 	var downloaded int64 = 0
 	var out *os.File
-	var err error
 
 	// Check for existing file
 	if fi, statErr := os.Stat(filePath); statErr == nil {
 		out, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
 		downloaded = fi.Size()
+		reRequest, _ := http.NewRequest("GET", dl.URL, nil)
+		if downloaded > 0 {
+			reRequest.Header.Set("Range", fmt.Sprintf("bytes=%d-", downloaded))
+		}
+
+		resp, err = client.Do(reRequest)
+		if err != nil {
+			dl.Error = err.Error()
+			return
+		}
 	} else {
 		out, err = os.Create(filePath)
 	}
@@ -197,16 +136,6 @@ func downloadWorker(dl *model.Download) {
 	}
 	defer out.Close()
 
-	req, _ := http.NewRequest("GET", dl.URL, nil)
-	if downloaded > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", downloaded))
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		dl.Error = err.Error()
-		return
-	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
