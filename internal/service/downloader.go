@@ -177,8 +177,8 @@ func downloadWorker(dl *model.Download) {
 		}
 	}()
 
-	filePath := filepath.Join("downloads", dl.FileName)
-	_ = os.MkdirAll("downloads", 0755)
+	filePath := filepath.Join(dl.Path, dl.FileName)
+	_ = os.MkdirAll(dl.Path, 0755)
 
 	var downloaded int64 = 0
 	var out *os.File
